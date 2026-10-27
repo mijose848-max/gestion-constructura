@@ -811,6 +811,7 @@ setInterval(()=>{if(gcDriveReady){if(gcDriveAuthorized())gcDriveSync();else gcDr
   const editIndex=actionPanels.findIndex(p=>/^Editar /i.test(p.dataset.uiTitle));if(editIndex>=0)actionPanels[editIndex].hidden=false;
  }
  const priorRender=render;render=function(){priorRender();decorate();};
+ const priorEditDaily=editarParteDia;editarParteDia=function(obra,fecha){priorEditDaily(obra,fecha);const index=actionPanels.findIndex(p=>p.querySelector('form[onsubmit="guardarParteDiario(event)"]'));if(index>=0)window.uiOpenAction(index);};
  const priorOpenPayment=abrirPagoV25;abrirPagoV25=function(i){priorOpenPayment(i);const index=actionPanels.findIndex(p=>p.querySelector('#pagoV25'));if(index>=0)window.uiOpenAction(index);};
  render();
 })();
