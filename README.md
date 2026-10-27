@@ -4,6 +4,14 @@ Aplicación HTML para gestionar obras, presupuestos, materiales, partes diarios,
 
 La versión actual está en `index.html`. Mantiene las mejoras de V25 y añade sincronización con Google Drive.
 
+## Interfaz simplificada
+
+La V25 organiza las secciones en un menú lateral por áreas. Cada pantalla muestra primero sus registros: el botón principal abre el formulario de alta y **Otras acciones** agrupa importación e impresión. Los formularios de edición se abren al pulsar Editar en una fila.
+
+El resumen incluye accesos a Nueva obra, Nuevo parte y Nueva factura. Los listados de obras, clientes, proveedores, materiales y equipo incorporan búsqueda. En pantallas pequeñas, el menú se abre con el botón superior izquierdo.
+
+**Conectar Drive** sigue en la barra superior. **Copias y opciones** reúne Exportar copia, Importar copia, Recuperar versión, Sincronizar ahora y las demás opciones de Drive. El rediseño mantiene los datos V25 existentes y la sincronización.
+
 ## Conectar Google Drive
 
 1. Abre la aplicación publicada por HTTPS. Con GitHub Pages, la dirección habitual de este repositorio es `https://mijose848-max.github.io/gestion-constructura/`.
