@@ -12,6 +12,16 @@ El resumen incluye accesos a Nueva obra, Nuevo parte y Nueva factura. Los listad
 
 **Conectar Drive** sigue en la barra superior. **Copias y opciones** reúne Exportar copia, Importar copia, Recuperar versión, Sincronizar ahora y las demás opciones de Drive. El rediseño mantiene los datos V25 existentes y la sincronización.
 
+## Cantidades, precios y beneficio por obra
+
+En **Obras**, pulsa **Desglose** en la fila de una obra, o selecciónala en **Cantidades y beneficio por obra**. Añade materiales o trabajos con descripción, cantidad, unidad, precio de coste e incremento sobre coste. Puedes editar o eliminar cada línea.
+
+El programa calcula el precio de venta por unidad, coste total, venta total y beneficio. Ejemplo: 10 unidades × 20 € de coste, con un incremento del 25 %, dan 200 € de coste, 250 € de venta y 50 € de beneficio. La venta se calcula antes de redondear y los importes totales de cada línea se redondean a céntimos. No se suman cantidades de unidades diferentes.
+
+Los totales aparecen en el desglose de cada obra. Son importes previstos sin IVA: no cambian automáticamente el contrato ni contabilizan gastos reales. Las líneas se guardan dentro de su obra y se conservan en las copias JSON, el historial local y las copias de Drive. Las obras anteriores siguen funcionando sin necesidad de modificarlas.
+
+Prueba de regresión: `node tests/obra-breakdown.cjs`. Comprueba cálculos, edición, eliminación y deshacer, validación, separación entre obras, compatibilidad con copias anteriores, conservación en Drive y reversión si falla el guardado.
+
 ## Conectar Google Drive
 
 1. Abre la aplicación publicada por HTTPS. Con GitHub Pages, la dirección habitual de este repositorio es `https://mijose848-max.github.io/gestion-constructura/`.
