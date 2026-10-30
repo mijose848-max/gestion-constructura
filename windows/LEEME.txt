@@ -1,0 +1,30 @@
+GESTION CONSTRUCTORA - V25 WINDOWS LOCAL
+
+INSTALAR
+1. Antes de cambiar, abre tu programa web y pulsa Copias y opciones > Exportar copia. Conserva el JSON.
+2. Extrae TODO el ZIP en una carpeta. No ejecutes el programa desde dentro del ZIP.
+3. Abre Instalar.cmd. Copia el programa a la carpeta de aplicaciones de tu usuario y crea el acceso directo Gestion Constructora en el Escritorio. No necesita permisos de administrador.
+4. Abre el acceso directo. En Copias y opciones > Importar copia elige el JSON anterior. Comprueba obras, partes y facturas antes de seguir trabajando.
+
+USO
+Funciona en Windows 10 y 11 con .NET Framework 4.8 y un navegador Edge o Chrome actualizado. No requiere Python, Node ni un servidor externo. La interfaz se abre en una ventana del navegador que se comunica solamente con el programa local, en http://localhost:49371. No necesita Internet para obras, partes, facturas ni lectura de PDF y Excel.
+
+Los datos se guardan en:
+%LOCALAPPDATA%\GestionConstructora\Datos
+El archivo estado.json contiene los datos y ajustes. La carpeta Versiones conserva versiones anteriores del archivo. No borres esa carpeta. Borrar el historial del navegador no borra los archivos de datos.
+Puedes abrir la carpeta desde Copias y opciones > Abrir carpeta de datos del equipo.
+Para terminar por completo, usa Cerrar programa en el icono de Gestion Constructora junto al reloj de Windows. Cerrar solamente la ventana deja el servicio local disponible.
+
+COPIAS OPCIONALES
+Pulsa Carpeta de copias y elige una carpeta. Puede estar en otra unidad o en una carpeta de Google Drive para escritorio si ya lo tienes instalado. El programa guarda un JSON llamado gestion-constructora-copia-local.json y lo actualiza al guardar cambios. La sincronizacion de esa carpeta con Google depende de Drive para escritorio y de la conexion. El programa no afirma que un archivo haya llegado a la nube.
+Exportar copia sigue disponible para guardar JSON independientes. Para recuperar, usa Importar copia. Importar sustituye el conjunto de datos, por lo que conviene exportar antes el estado actual.
+
+ACTUALIZACIONES
+Esta version local no descarga cambios automaticamente. Para actualizar, cierra el programa desde el icono junto al reloj y ejecuta Instalar.cmd del nuevo paquete. Los datos estan en una carpeta separada y se conservan. La version web permanece disponible, pero sus datos y los de Windows son independientes: evita alternar entre ellas sin trasladar una copia JSON.
+
+Si otra ventana cambia los datos, el programa rechaza una escritura antigua para evitar sobrescribirlos. Exporta los cambios que necesites y vuelve a abrir la ventana.
+
+Si el programa no abre, comprueba que el puerto 49371 no este ocupado. No cambies ajustes de seguridad de Windows ni ejecutes como administrador para resolverlo; conserva el mensaje y pide ayuda.
+
+El ejecutable de esta primera version no tiene firma digital. Codigo fuente y proceso de compilacion: https://github.com/mijose848-max/gestion-constructura
+Bibliotecas incluidas: PDF.js 6.4.299 y SheetJS 0.20.3; sus licencias estan en la carpeta Licencias.

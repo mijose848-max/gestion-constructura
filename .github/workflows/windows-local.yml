@@ -1,0 +1,27 @@
+name: Compilar Windows local
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'index.html'
+      - 'windows/**'
+      - '.github/workflows/windows-local.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar y probar el paquete local
+        shell: pwsh
+        run: ./windows/build.ps1
+      - name: Empaquetar
+        shell: pwsh
+        run: Compress-Archive -Path windows/dist/* -DestinationPath GestionConstructora-Windows.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GestionConstructora-Windows
+          path: GestionConstructora-Windows.zip
+          retention-days: 3
