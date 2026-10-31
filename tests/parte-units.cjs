@@ -3,7 +3,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const html = fs.readFileSync(process.env.GC_TEST_INDEX || path.join(__dirname, '..', 'index.html'), 'utf8');
-const names = ['normalizarPDFParte', 'normalizarUnidadPDFParte', 'buscarMaterialPDF', 'mostrarPDFParte'];
+const names = ['normalizarPDFParte', 'normalizarUnidadPDFParte', 'buscarMaterialPDF', 'actualizarUnidadMaterialPDFParte', 'mostrarPDFParte'];
 const functions = names.map(name => {
   const match = html.match(new RegExp('^function ' + name + '\\([^\\n]*', 'm'));
   assert(match, `No se encontró ${name}`);
