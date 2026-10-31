@@ -1,0 +1,23 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(process.env.GC_TEST_INDEX||path.join(__dirname,'..','index.html'),'utf8');
+const elements={},storage=new Map(),alerts=[];
+const el=()=>({innerHTML:'',textContent:'',style:{},append(){},prepend(){},appendChild(){},insertAdjacentHTML(){},querySelector(){return el()},querySelectorAll(){return[]},elements:{obra:{},estado:{}},addEventListener(){},scrollIntoView(){},focus(){},remove(){}});
+const context={Intl,Date,Math,Number,JSON,String,Map,Set,Array,Object,Blob,URLSearchParams,AbortSignal,console,setTimeout(){},clearTimeout(){},setInterval(){},alert:s=>alerts.push(s),confirm:()=>true,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},document:{getElementById:k=>elements[k]??=el(),querySelector:()=>el(),querySelectorAll:()=>[],createElement:()=>el(),head:el()},window:{scrollTo(){},addEventListener(){}},FormData:class{constructor(f){this.f=f}entries(){return Object.entries(this.f.values)}}};
+const ctx=vm.createContext(context),run=s=>vm.runInContext(s,ctx);
+run(html.match(/<script>([\s\S]*)<\/script>/)[1]);
+run(`db=blank();db.obras.push({id:'obra',nombre:'Obra conservada'});db.materiales.push({id:'mat',nombre:'Material conservado',compra:12,venta:15});db.historialPrecios.push({fecha:'2026-10-31',proveedor:'p',codigo:'M01',nombre:'Material conservado',anterior:10,nuevo:12},{fecha:'2026-10-31',proveedor:'p',codigo:'M01',nombre:'Material conservado',anterior:10,nuevo:12});`);
+const raw=run('JSON.stringify(db)');context.raw=raw;
+assert.equal(run('JSON.stringify(validarV25(JSON.parse(raw)))'),raw,'Conserva todos los eventos, incluso idénticos, sin añadir identificadores ni cambiar importes');
+assert.equal(run('gcDriveDecode(JSON.parse(raw)).data.historialPrecios.length'),2,'También carga el historial desde Drive');
+for(const expr of ["{historialPrecios:[null]}","{historialPrecios:[[]]}","{historialPrecios:['texto']}","{obras:[{nombre:'Sin id'}]}","{obras:[{id:'x'},{id:'x'}]}","{historialPrecios:[{id:'<script>'}]}","{facturas:[{id:'f',tipo:'emitida',base:-10,total:-10}]} "]){assert.throws(()=>run('validarV25('+expr+')'),'Mantiene el rechazo de registros e identificadores inválidos');}
+context.FileReader=class{readAsText(f){this.result=f.text;this.onload()}};
+context.importEvent={target:{files:[{text:raw}],value:'copia.json'}};
+run("db=blank();db.obras.push({id:'anterior',nombre:'Antes de importar'});confirmadoV25=JSON.stringify(db);importData(importEvent)");
+assert(alerts.at(-1).includes('Copia importada'));
+assert.equal(run('JSON.stringify(db)'),raw);
+assert.equal(storage.get('gc_v25_prueba_tarifas'),raw);
+assert.equal(JSON.parse(storage.get('gc_v25_historial'))[0].datos.obras[0].id,'anterior','Conserva la versión anterior');
+run("db=validarV25(JSON.parse(localStorage.getItem('gc_v25_prueba_tarifas')))");assert.equal(run('JSON.stringify(db)'),raw,'Se vuelve a abrir la base importada sin bloqueo');
+context.confirm=()=>false;const saved=run('JSON.stringify(db)');run('importData(importEvent)');assert.equal(run('JSON.stringify(db)'),saved,'Cancelar no sustituye datos');
+context.confirm=()=>true;context.importEvent.target.files=[{text:'{"historialPrecios":[null]}'}];run('importData(importEvent)');assert.equal(run('JSON.stringify(db)'),saved,'Un archivo inválido no sustituye datos');
+console.log('OK: historial sin id, eventos repetidos conservados, importación real, persistencia, recarga, Drive, recuperación y validaciones de otras colecciones.');
