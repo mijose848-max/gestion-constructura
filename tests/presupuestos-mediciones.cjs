@@ -1,0 +1,29 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(process.env.GC_TEST_INDEX||path.join(__dirname,'..','index.html'),'utf8');
+const elements={},storage=new Map(),alerts=[];
+const el=()=>({innerHTML:'',textContent:'',style:{},append(){},prepend(){},appendChild(){},insertAdjacentHTML(){},querySelector(){return el()},querySelectorAll(){return[]},elements:{obra:{},estado:{}},addEventListener(){},scrollIntoView(){},focus(){},remove(){}});
+const context={Intl,Date,Math,Number,JSON,String,Map,Set,Array,Object,Blob,URLSearchParams,AbortSignal,console,setTimeout(){},clearTimeout(){},setInterval(){},alert:s=>alerts.push(s),confirm:()=>true,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},document:{getElementById:k=>elements[k]??=el(),querySelector:()=>el(),querySelectorAll:()=>[],createElement:()=>el(),head:el()},window:{scrollTo(){},addEventListener(){}},FormData:class{constructor(f){this.f=f}entries(){return Object.entries(this.f.values)}}};
+const ctx=vm.createContext(context),run=s=>vm.runInContext(s,ctx);
+run(html.match(/<script>([\s\S]*)<\/script>/)[1]);
+run(`db=blank();db.presupuestos.push({id:'b',nombre:'Presupuesto <nuevo>',fecha:'2026-11-01'},{id:'old',nombre:'Anterior'});db.partidas.push({id:'legacy',presupuesto:'old',capitulo:'01 · Capítulo antiguo',nombre:'Partida anterior',unidad:'ud',cantidad:5,precio:10});confirmadoV25=JSON.stringify(db);selectedBudget='b';`);
+const f=values=>({elements:Object.fromEntries(Object.entries(values).map(([k,v])=>[k,{value:String(v)}]))});
+function submit(fn,values,arg){context.formTest=f(values);run(fn+"({preventDefault(){},target:formTest},'"+arg+"')");}
+assert.equal(run("budgetTotal('old')"),50);assert.equal(run("capitulosPresupuesto(by('presupuestos','old'))[0].nombre"),'01 · Capítulo antiguo');
+submit('guardarCapituloPresupuesto',{codigo:'01',nombre:'Albañilería'},'b');submit('guardarCapituloPresupuesto',{codigo:'02',nombre:'Revestimientos'},'b');
+const capA=run('db.presupuestos[0].capitulos[0].id'),capB=run('db.presupuestos[0].capitulos[1].id');
+submit('guardarPartidaPresupuesto',{capitulo:capA,codigo:'01.01',nombre:'Pared <medida>',unidad:'m²',cantidad:0,precio:15},'b');
+const partidaId=run("db.partidas.find(p=>p.presupuesto==='b').id");context.partidaId=partidaId;
+submit('guardarMedicionPresupuesto',{descripcion:'Dos paredes',unidades:2,largo:3,ancho:4,alto:''},partidaId);assert.equal(run("cantidadPartida(by('partidas',partidaId))"),24);assert.equal(run("budgetTotal('b')"),360);
+submit('guardarMedicionPresupuesto',{descripcion:'Hueco',unidades:-1,largo:2,ancho:'',alto:''},partidaId);assert.equal(run("cantidadPartida(by('partidas',partidaId))"),22);assert.equal(run("budgetTotal('b')"),330);
+run("medicionPresupuestoEditando=by('partidas',partidaId).mediciones[0].id");submit('guardarMedicionPresupuesto',{descripcion:'Una pared',unidades:1,largo:3,ancho:4,alto:''},partidaId);assert.equal(run("cantidadPartida(by('partidas',partidaId))"),10);
+submit('guardarPartidaPresupuesto',{capitulo:capB,codigo:'02.01',nombre:'Otra partida',unidad:'ud',cantidad:2,precio:5},'b');assert.equal(run("budgetTotal('b')"),160);assert.equal(run("budgetTotal('old')"),50);
+context.capA=capA;context.capB=capB;run('capituloPresupuestoEditando=capA');submit('guardarCapituloPresupuesto',{codigo:'01',nombre:'Albañilería revisada'},'b');assert.equal(run("by('partidas',partidaId).capitulo"),'Albañilería revisada');
+const beforeDelete=run('JSON.stringify(db)');run("eliminarCapituloPresupuesto('b',capA)");assert.equal(run('JSON.stringify(db)'),beforeDelete,'Capítulo con partidas protegido');
+run("partidaPresupuestoEditando=partidaId");submit('guardarPartidaPresupuesto',{capitulo:capB,codigo:'01.01',nombre:'Pared <medida>',unidad:'m²',cantidad:999,precio:15},'b');assert.equal(run("cantidadPartida(by('partidas',partidaId))"),10,'Editar conserva las mediciones');run("eliminarCapituloPresupuesto('b',capA)");assert.equal(run('db.presupuestos[0].capitulos.length'),1);
+assert(run('vistaPresupuestos()').includes('Capítulos, partidas y mediciones'));const report=run('documentoPresupuestoMediciones(db.presupuestos[0])');assert(report.includes('Presupuesto &lt;nuevo&gt;'));assert(report.includes('Pared &lt;medida&gt;'));assert(report.includes('Una pared'));assert(report.includes('Hueco'));assert(report.includes('160,00'));assert(!report.includes('Eliminar medición'));
+assert.equal(run("gcDriveDecode(JSON.parse(gcDriveSnapshot())).data.partidas.find(p=>p.id===partidaId).mediciones.length"),2);run("db=validarV25(JSON.parse(localStorage.getItem('gc_v25_prueba_tarifas')))");assert.equal(run("budgetTotal('b')"),160);
+const saved=run('JSON.stringify(db)');for(const v of [{unidades:'Infinity'},{unidades:''},{largo:-1},{unidades:-1000}]){submit('guardarMedicionPresupuesto',{descripcion:'Inválida',unidades:1,largo:2,ancho:'',alto:'',...v},partidaId);assert.equal(run('JSON.stringify(db)'),saved);}
+const sample=JSON.parse(run("JSON.stringify(by('partidas',partidaId))"));context.sample=sample;sample.mediciones[0].largo=-1;assert.throws(()=>run('validarV25({partidas:[sample]})'));
+let printed=0;context.setTimeout=fn=>fn();context.window.open=()=>({document:{write(){},close(){}},focus(){},print(){printed++}});run("printBudget('b')");assert.equal(printed,1);
+run("medicionPresupuestoEditando=null;localStorage.setItem=()=>{throw Error('Sin espacio')}");const beforeFailure=run('JSON.stringify(db)');assert.throws(()=>submit('guardarMedicionPresupuesto',{descripcion:'Fallo guardado',unidades:1,largo:1,ancho:1,alto:1},partidaId));assert.equal(run('JSON.stringify(db)'),beforeFailure);
+console.log('OK: capítulos, partidas, mediciones con dimensiones y descuentos, edición y traslado, subtotales, compatibilidad, validación, Drive, persistencia, impresión y reversión de guardado.');
