@@ -4,7 +4,7 @@ $www=Join-Path $out 'www'
 $vendor=Join-Path $www 'vendor'
 $deps=Join-Path $env:RUNNER_TEMP 'gc-runtime-ocr-deps'
 New-Item -ItemType Directory -Force -Path $www,$vendor | Out-Null
-npm install --prefix $deps --ignore-scripts --no-package-lock --no-audit --no-fund tesseract.js@5.1.1 @tesseract.js-data/spa@1.0.0 @tesseract.js-data/eng@1.0.0 playwright@1.56.1
+npm install --prefix $deps --ignore-scripts --no-package-lock --no-audit --no-fund tesseract.js@5.1.1 '@tesseract.js-data/spa@1.0.0' '@tesseract.js-data/eng@1.0.0' playwright@1.56.1
 if($LASTEXITCODE -ne 0){throw 'No se pudieron preparar los componentes OCR'}
 $ocr=Join-Path $vendor 'ocr'
 New-Item -ItemType Directory -Force -Path $ocr,(Join-Path $ocr 'core'),(Join-Path $ocr 'langs') | Out-Null
