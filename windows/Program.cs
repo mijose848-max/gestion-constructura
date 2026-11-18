@@ -133,9 +133,9 @@ internal sealed class LocalServer:IDisposable {
     }
     if(method!="GET"){Respond(stream,405,"text/plain","Método no permitido");return;}
     // Lista cerrada: nunca sirve archivos de datos ni rutas arbitrarias del disco.
-    var assets=new Dictionary<string,string>{{"/","index.html"},{"/index.html","index.html"},{"/desktop-storage.js","desktop-storage.js"},{"/vendor/pdf.mjs","vendor/pdf.mjs"},{"/vendor/pdf.worker.mjs","vendor/pdf.worker.mjs"},{"/vendor/xlsx.full.min.js","vendor/xlsx.full.min.js"}};
+    var assets=new Dictionary<string,string>{{"/","index.html"},{"/index.html","index.html"},{"/desktop-storage.js","desktop-storage.js"},{"/vendor/pdf.mjs","vendor/pdf.mjs"},{"/vendor/pdf.worker.mjs","vendor/pdf.worker.mjs"},{"/vendor/xlsx.full.min.js","vendor/xlsx.full.min.js"},{"/vendor/ocr/tesseract.min.js","vendor/ocr/tesseract.min.js"},{"/vendor/ocr/worker.min.js","vendor/ocr/worker.min.js"}};
     string relative;if(!assets.TryGetValue(route,out relative)){
-     relative=null;foreach(string dir in new[]{"cmaps","standard_fonts","wasm"}){string prefix="/vendor/"+dir+"/";if(route.StartsWith(prefix,StringComparison.Ordinal)){string name=route.Substring(prefix.Length);if(System.Text.RegularExpressions.Regex.IsMatch(name,@"^[A-Za-z0-9_.-]+$"))relative="vendor/"+dir+"/"+name;}}
+     relative=null;foreach(string dir in new[]{"cmaps","standard_fonts","wasm","ocr/core","ocr/langs"}){string prefix="/vendor/"+dir+"/";if(route.StartsWith(prefix,StringComparison.Ordinal)){string name=route.Substring(prefix.Length);if(System.Text.RegularExpressions.Regex.IsMatch(name,@"^[A-Za-z0-9_.-]+$"))relative="vendor/"+dir+"/"+name;}}
      if(relative==null){Respond(stream,404,"text/plain","No encontrado");return;}
     }
     string file=Path.Combine(www,relative.Replace('/',Path.DirectorySeparatorChar));
@@ -153,7 +153,7 @@ internal sealed class LocalServer:IDisposable {
  }
  private static void RespondBytes(Stream stream,int status,string type,byte[] bytes) {
   string reason=status==200?"OK":status==404?"Not Found":"Error";
-  string headers="HTTP/1.1 "+status+" "+reason+"\r\nContent-Type: "+type+"\r\nContent-Length: "+bytes.Length+"\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nReferrer-Policy: no-referrer\r\nContent-Security-Policy: default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'\r\n\r\n";
+  string headers="HTTP/1.1 "+status+" "+reason+"\r\nContent-Type: "+type+"\r\nContent-Length: "+bytes.Length+"\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: SAMEORIGIN\r\nReferrer-Policy: no-referrer\r\nContent-Security-Policy: default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'self'\r\n\r\n";
   byte[] head=Encoding.ASCII.GetBytes(headers);stream.Write(head,0,head.Length);stream.Write(bytes,0,bytes.Length);stream.Flush();
  }
  internal static string Quote(string path){return "\""+path.Replace("\"","")+"\"";}

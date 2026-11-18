@@ -1,0 +1,25 @@
+name: Compilar motor Windows y OCR
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/motor-economia-20261118']
+    paths: ['windows/Program.cs', 'windows/runtime-*', '.github/workflows/windows-runtime.yml']
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar y comprobar motor genérico
+        shell: pwsh
+        run: ./windows/runtime-build.ps1
+      - name: Empaquetar motor sin datos de usuario
+        shell: pwsh
+        run: Compress-Archive -Path windows/runtime-dist/* -DestinationPath MotorWindows.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MotorWindows-OCR
+          path: MotorWindows.zip
+          retention-days: 3
