@@ -36,4 +36,6 @@ try{
  if($LASTEXITCODE -ne 0){throw 'Falló la prueba del motor local'}
  node (Join-Path $PSScriptRoot 'runtime-scanner-test.cjs')
  if($LASTEXITCODE -ne 0){throw 'Falló la prueba de la pestaña del escáner'}
+ node (Join-Path $PSScriptRoot 'runtime-ocr-quality-test.cjs')
+ if($LASTEXITCODE -ne 0){throw 'Falló la lectura OCR de la factura de prueba'}
 }finally{if(-not $server.HasExited){Stop-Process -Id $server.Id -Force}}
