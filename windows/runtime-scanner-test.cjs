@@ -1,0 +1,20 @@
+const {chromium}=require(process.env.GC_PLAYWRIGHT),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
+ const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(process.env.GC_TEST_URL);
+ assert.equal(await page.evaluate(()=>desktopStorage.request('GET','/api/scanner/capabilities').available),true);
+ assert.equal((await page.request.post(process.env.GC_TEST_URL+'/api/scanner/capture',{data:{}})).status(),401,'Capturar necesita el token local');
+ const revision=await page.evaluate(()=>desktopStorage.revision);
+ const panel=fs.readFileSync(path.join(__dirname,'runtime-scanner-panel.html'),'utf8'),code=fs.readFileSync(path.join(__dirname,'runtime-scanner-ui.js'),'utf8');
+ await page.setContent(panel+'<select id="pdfType"><option value="gasto">gasto</option><option value="ingreso">ingreso</option></select>');
+ await page.addScriptTag({content:"(()=>{const $=id=>document.getElementById(id);const safe=s=>String(s).replace(/[&<>]/g,'');let pdfRunning=false,pdfReadyToAttach=null,pdfQueue=[],pdfIndex=0,pdfImported=0,pdfDuplicates=0;const tab=n=>window.gcScanTab=n;const nextPdf=()=>window.gcPdfFiles=pdfQueue;"+code+";window.gcMockScan=true;parent.gcCapturarDesdeEscaner=async()=>{if(window.gcMockScan===null)return {cancelled:true};if(window.gcMockScan===false)throw Error('Escáner no conectado');const c=document.createElement('canvas');c.width=640;c.height=150;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,640,150);ctx.fillStyle='black';ctx.font='45px Arial';ctx.fillText('FACTURA 123',15,90);const data=c.toDataURL('image/png').split(',')[1];window.gcMockImage=data;return {cancelled:false,data,mimeType:'image/png',name:'Captura.png'};};})();"});
+ await page.locator('#escaner').evaluate(e=>e.classList.remove('hidden'));
+ await page.waitForFunction(()=>typeof document.getElementById('gcScanCapture').onclick==='function');
+ await page.click('#gcScanCapture');await page.waitForFunction(()=>document.querySelectorAll('#gcScanPages .card').length===1);
+ await page.evaluate(()=>window.gcMockScan=null);await page.click('#gcScanCapture');await page.waitForFunction(()=>document.getElementById('gcScanStatus').textContent.includes('cancelada'));assert.equal(await page.locator('#gcScanPages .card').count(),1);
+ await page.evaluate(()=>window.gcMockScan=false);await page.click('#gcScanCapture');await page.waitForFunction(()=>document.getElementById('gcScanStatus').textContent.includes('no conectado'));assert.equal(await page.locator('#gcScanPages .card').count(),1);
+ const b64=await page.evaluate(()=>window.gcMockImage);await page.locator('#gcScanImages').setInputFiles({name:'Pagina2.png',mimeType:'image/png',buffer:Buffer.from(b64,'base64')});await page.waitForFunction(()=>document.querySelectorAll('#gcScanPages .card').length===2);
+ await page.click('#gcScanRead');await page.waitForFunction(()=>window.gcPdfFiles?.length===1);
+ const result=await page.evaluate(async()=>{const f=window.gcPdfFiles[0],bytes=new Uint8Array(await f.arrayBuffer());return {text:new TextDecoder().decode(bytes),pages:f.gcScanPages,ocr:f.gcForceOCR,size:f.size,staged:document.querySelectorAll('#gcScanPages .card').length,tab:window.gcScanTab};});
+ assert(result.text.startsWith('%PDF-1.4'));assert(result.text.includes('/Count 2'));assert(result.text.includes('/DCTDecode'));assert.equal(result.pages,2);assert.equal(result.ocr,true);assert.equal(result.staged,0);assert.equal(result.tab,'pdfs');assert.equal(await page.evaluate(()=>desktopStorage.revision),revision,'La preparación del escaneo no guarda registros contables');
+ assert.deepEqual(errors,[]);console.log('OK: endpoint autenticado, captura simulada, cancelación, dispositivo ausente, imágenes, PDF de dos páginas, cola OCR y datos intactos antes de guardar.');
+ }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

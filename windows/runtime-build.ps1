@@ -34,4 +34,6 @@ try{
  for($i=0;$i -lt 50;$i++){try{Invoke-WebRequest $env:GC_TEST_URL -UseBasicParsing | Out-Null;break}catch{Start-Sleep -Milliseconds 200}}
  node (Join-Path $PSScriptRoot 'runtime-test.cjs')
  if($LASTEXITCODE -ne 0){throw 'Falló la prueba del motor local'}
+ node (Join-Path $PSScriptRoot 'runtime-scanner-test.cjs')
+ if($LASTEXITCODE -ne 0){throw 'Falló la prueba de la pestaña del escáner'}
 }finally{if(-not $server.HasExited){Stop-Process -Id $server.Id -Force}}

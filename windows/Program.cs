@@ -184,7 +184,7 @@ internal static class NativeScanner {
       result=new {cancelled=false,name="Factura-escaneada-"+DateTime.Now.ToString("yyyyMMdd-HHmmss",CultureInfo.InvariantCulture)+".png",mimeType="image/png",data=Convert.ToBase64String(output.ToArray())};
      }
     }catch(TargetInvocationException e){error=e.InnerException??e;}catch(Exception e){error=e;}
-    finally{foreach(object com in new[]{vector,image,dialog})if(com!=null&&System.Runtime.InteropServices.Marshal.IsComObject(com))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(com);}
+    finally{foreach(object com in new[]{vector,image,dialog})if(com!=null){try{if(System.Runtime.InteropServices.Marshal.IsComObject(com))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(com);}catch{}}}
    });
    thread.IsBackground=true;thread.SetApartmentState(ApartmentState.STA);thread.Start();thread.Join();
    if(error!=null)throw new Exception("No se pudo escanear. Comprueba que el equipo esté conectado y que su controlador esté instalado. "+error.Message);
