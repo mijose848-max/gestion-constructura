@@ -123,6 +123,8 @@ internal sealed class LocalServer:IDisposable {
       } else if(method=="POST"&&route=="/api/data-folder"){Process.Start("explorer.exe",Quote(store.DirectoryPath));result=new {ok=true};}
       else if(method=="POST"&&route=="/api/backup/configure") {var command=Json.Read<Dictionary<string,object>>(Encoding.UTF8.GetString(body));long expected=Convert.ToInt64(command["expectedRevision"],CultureInfo.InvariantCulture);if(expected!=store.Revision)throw new ConflictException();string folder=chooseFolder();if(folder==null)result=new {cancelled=true};else{store.ConfigureBackup(expected,folder);result=store.Snapshot();}}
       else if(method=="POST"&&route=="/api/backup/disconnect") {var command=Json.Read<Dictionary<string,object>>(Encoding.UTF8.GetString(body));store.ConfigureBackup(Convert.ToInt64(command["expectedRevision"],CultureInfo.InvariantCulture),"");result=store.Snapshot();}
+      else if(method=="POST"&&route=="/api/scanner/capture"){result=NativeScanner.Capture();}
+      else if(method=="GET"&&route=="/api/scanner/capabilities"){result=new {available=true};}
       else if(method=="POST"&&route=="/api/backup/now"){result=new {path=store.WriteBackup()};}
       else if(method=="POST"&&route=="/api/backup/folder") {if(String.IsNullOrEmpty(store.BackupFolder))throw new Exception("No hay carpeta de copias configurada.");Process.Start("explorer.exe",Quote(store.BackupFolder));result=new {ok=true};}
       else {Respond(stream,404,"application/json","{}");return;}
@@ -159,6 +161,38 @@ internal sealed class LocalServer:IDisposable {
  internal static string Quote(string path){return "\""+path.Replace("\"","")+"\"";}
  public void Dispose(){stopped=true;listener.Stop();}
 }
+internal static class NativeScanner {
+ private static readonly object gate=new object();
+ internal static object Capture(){
+  if(!System.Threading.Monitor.TryEnter(gate))throw new Exception("Ya hay una captura abierta. Termina o cancela la ventana del escáner.");
+  try {
+   object result=null;Exception error=null;
+   var thread=new Thread(delegate(){
+    object dialog=null,image=null,vector=null;
+    try {
+     Type type=Type.GetTypeFromProgID("WIA.CommonDialog");if(type==null)throw new Exception("Windows no dispone del servicio de escaneo. Puedes cargar un PDF o una imagen escaneada.");
+     dialog=Activator.CreateInstance(type);
+     image=type.InvokeMember("ShowAcquireImage",BindingFlags.InvokeMethod,null,dialog,new object[]{1,0,0,"{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}",true,true,false});
+     if(image==null){result=new {cancelled=true};return;}
+     vector=image.GetType().InvokeMember("FileData",BindingFlags.GetProperty,null,image,null);
+     var bytes=(byte[])vector.GetType().InvokeMember("BinaryData",BindingFlags.GetProperty,null,vector,null);
+     if(bytes==null||bytes.Length==0||bytes.Length>40*1024*1024)throw new Exception("La captura está vacía o es demasiado grande. Prueba con una resolución de 300 ppp.");
+     using(var input=new MemoryStream(bytes))using(var picture=Image.FromStream(input))using(var output=new MemoryStream()){
+      if((long)picture.Width*picture.Height>40000000)throw new Exception("La captura supera el tamaño admitido. Selecciona 300 ppp.");
+      picture.Save(output,System.Drawing.Imaging.ImageFormat.Png);
+      if(output.Length>25*1024*1024)throw new Exception("La captura ocupa demasiado. Reduce la resolución y vuelve a escanear.");
+      result=new {cancelled=false,name="Factura-escaneada-"+DateTime.Now.ToString("yyyyMMdd-HHmmss",CultureInfo.InvariantCulture)+".png",mimeType="image/png",data=Convert.ToBase64String(output.ToArray())};
+     }
+    }catch(TargetInvocationException e){error=e.InnerException??e;}catch(Exception e){error=e;}
+    finally{foreach(object com in new[]{vector,image,dialog})if(com!=null&&System.Runtime.InteropServices.Marshal.IsComObject(com))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(com);}
+   });
+   thread.IsBackground=true;thread.SetApartmentState(ApartmentState.STA);thread.Start();thread.Join();
+   if(error!=null)throw new Exception("No se pudo escanear. Comprueba que el equipo esté conectado y que su controlador esté instalado. "+error.Message);
+   return result;
+  }finally{System.Threading.Monitor.Exit(gate);}
+ }
+}
+
 internal static class Program {
  private const int DefaultPort=49371;
  private static string AppRoot {get{return AppDomain.CurrentDomain.BaseDirectory;}}
@@ -224,3 +258,4 @@ internal static class Program {
   }finally{Directory.Delete(folder,true);}
  }
 }
+
